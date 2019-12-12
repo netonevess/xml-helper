@@ -1,35 +1,32 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
-
 class XMLHelper{
 
+    private $RETURNELEMENT;
+    private $AUTOINSERT;
     private $dom; // DOM ELEMENT
     private $xml; // XML SORCE
 
-    private $config;
+    public $config;
+    public $lastCreatedElement;
 
-    public function __construct($data = []){
-        $data = $this->data;
-        $this->setDOM();
+    public function __construct($config = []){
+        $this->config = $config;
+        $version = !array_key_exists('version', $this->config)?"1.0":$this->config['version'];
+        $charset = !array_key_exists('charset', $this->config)?"UTF-8":$this->config['charset'];
+        $this->RETURNELEMENT = array_key_exists("returnElement",$config)?$config["returnElement"]:FALSE;
+        $this->AUTOINSERT = array_key_exists("autoInsertTag",$config)?$config["autoInsertTag"]:TRUE;
+
+        $this->dom = new DOMDocument($version,$charset);
+
+        $beautify = !array_key_exists('beautify', $this->config)?false:$this->config['beautify'];
+        if($beautify){
+            $this->dom->preserveWhiteSpace = false;
+            $this->dom->formatOutput = true;
+        }
     }
 
     /*
-    *   TOOLS TO READ
-    *   Require a sorce './mydata.xml'
-    *
-    */
-    public function setXML($src){
-        $timeout = array_key_exists('timeout', $this->data)?60:$this->data['timeout'];
-        $ctx = stream_context_create(array('http'=>array('timeout' => $timeout)));
-        $file = file_get_contents($src,FALSE,$ctx);
-
-        $this->xml = new SimpleXMLElement($file);
-
-        return $this;
-    }
-
-    /*
-    *   TOOLS TO CREATE
+    *   Tools to create
     *
     */
     public function tag($element,$value,$cdata=FALSE,$attr=array()){
@@ -50,22 +47,39 @@ class XMLHelper{
             foreach ($attr as $key => $value)
                 $element->setAttribute($key,$value);
 
-        return $element;
+        $this->lastCreatedElement = $element;
+        if($this->AUTOINSERT)
+            $this->insert($this->lastCreatedElement);
+        return $this->RETURNELEMENT?$element:$this;
+    }
+    public function insert($tag = NULL){
+        $tag = is_null($tag)?$this->lastCreatedElement:$tag;
+        $this->dom->appendChild($tag);
+        return $this->RETURNELEMENT?$tag:$this;
     }
 
     public function saveDOM($filename){
         return $this->dom->save($filename);
     }
     public function printDOM(){
-        header("Content-Type: text/xml");
+        @header("Content-Type: text/xml");
         print $this->dom->saveXML();
     }
     public function getDOM(){
         return $this->dom;
     }
-    private function setDOM(){ // "ISO-8859-1" charset for brasilian
-        $version = array_key_exists('version', $this->data)?"1.0":$this->data['version'];
-        $charset = array_key_exists('charset', $this->data)?"UTF-8":$this->data['charset'];
-        $this->dom = new DOMDocument($version,$charset);
+    public function setReturnElement($var){
+        $this->RETURNELEMENT = (bool) $var;
+        return $this;
+    }
+    /*
+    *   Only for download a xml
+    */
+    public function downloadxml($src){
+        $timeout = array_key_exists('timeout', $this->config)?60:$this->config['timeout'];
+        $ctx = stream_context_create(array('http'=>array('timeout' => $timeout)));
+        $file = file_get_contents($src,FALSE,$ctx);
+        $this->xml = new SimpleXMLElement($file);
+        return $this;
     }
 }
