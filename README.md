@@ -21,7 +21,8 @@ require_once ("../src/XMLHelper.php");
 It's easy to start coding:
 ```php
 $xh = new XMLHelper();
-$xh->printDOM(); ```
+$xh->printDOM();
+```
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 ```
